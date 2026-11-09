@@ -38,6 +38,22 @@ or macOS versions. The behaviour is covered by 134 automated black-box checks (f
 sanitizer/fuzz runs, but a simulator only proves that the code does what its author *thinks* the original
 does. **Test reports are very welcome** — see [Contributing](#contributing).
 
+## Download a ready-made build (no Xcode needed)
+
+Apple Silicon only. Get the zip from the [latest release](https://github.com/sarogreco/jlcooper-eclipse-native-ARM_daemon/releases/latest).
+It is built by GitHub Actions from the source in this repository and tested with the same black-box tests
+before it is published; it is ad-hoc signed, not notarised. Unzip it, open a Terminal in the unzipped folder and
+check it before use:
+
+```sh
+xattr -dr com.apple.quarantine .      # drop the "downloaded from the internet" flag
+file JLCooperPanelDaemon              # must say: Mach-O 64-bit executable arm64
+shasum -a 256 JLCooperPanelDaemon     # must match the line in SHA256SUMS on the release page
+```
+
+Then continue with [Install into Resolve](#install-into-resolve), using this file as the binary. You are about to
+run it with `sudo` inside the Resolve app: if you would rather not trust a prebuilt file, build it yourself below.
+
 ## Build
 
 You need the Xcode Command Line Tools (`xcode-select --install`).
@@ -82,8 +98,9 @@ APP="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Applications"
 #    overwrite the original with the new binary
 [ -e ~/JLCooperPanelDaemon.original ] || sudo cp -p "$APP/JLCooperPanelDaemon" ~/JLCooperPanelDaemon.original
 
-# 2. install and sign
-sudo cp build/JLCooperPanelDaemon "$APP/JLCooperPanelDaemon"
+# 2. install and sign (BIN: the file you built, or the one from the release zip)
+BIN=build/JLCooperPanelDaemon
+sudo cp "$BIN" "$APP/JLCooperPanelDaemon"
 sudo codesign --force --sign - "$APP/JLCooperPanelDaemon"
 ```
 
