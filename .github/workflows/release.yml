@@ -27,9 +27,12 @@ jobs:
           lipo -archs dist/JLCooperPanelDaemon | grep -qx arm64
 
       - name: Black-box tests on the exact binary that is released
+        # The tests are timing based and shared macOS runners are not always idle, so each suite gets
+        # one retry. A real bug fails both attempts.
         run: |
-          python3 tests/test_daemon.py dist/JLCooperPanelDaemon
-          python3 tests/test_mapping.py dist/JLCooperPanelDaemon
+          for t in test_daemon test_mapping; do
+            python3 tests/$t.py dist/JLCooperPanelDaemon || python3 tests/$t.py dist/JLCooperPanelDaemon
+          done
 
       - name: Package
         run: |

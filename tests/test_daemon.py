@@ -106,7 +106,8 @@ def run(mode):
     check('shuttle LED BF6B02', bytes.fromhex('f01525bf6b02f7') in fr, [f.hex() for f in fr])
     jogs = [m for m in r if m[1] == 4 and m[2] == 0x400]
     check('shuttle repeats +1 jog (~every 110ms)',
-          2 <= len(jogs) <= 6 and all(j[3] == struct.pack('<h', 1) for j in jogs), len(jogs))
+          # window = 0.45 s sleep + 0.3 s read = ~0.75 s, i.e. ~6.8 repeats at 110 ms: allow some slack either way
+          2 <= len(jogs) <= 9 and all(j[3] == struct.pack('<h', 1) for j in jogs), len(jogs))
     ecl.send(0x48, 0); time.sleep(0.2); rd(res, 0.2); fr = ecl.take()
     check('shuttle center clears LED', bytes.fromhex('f01525bf6b00f7') in fr)
     r = rd(res, 0.4)
