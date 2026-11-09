@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make
+      - name: Black-box tests (socketpair and listening-socket modes)
+        run: make test-uds
+      - name: Sanitizer build, tests and fuzz run
+        run: make asan
+
+  macos:
+    # Builds on a real macOS (Apple Silicon) runner. The timing-based tests are not guaranteed to be
+    # stable on shared macOS runners, so a failure here is informational and does not fail the workflow.
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make
+      - name: Architecture
+        run: |
+          file build/JLCooperPanelDaemon
+          lipo -archs build/JLCooperPanelDaemon
+      - name: Black-box tests
+        run: make test
