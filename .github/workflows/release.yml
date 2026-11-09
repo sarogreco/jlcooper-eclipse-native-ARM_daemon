@@ -1,0 +1,59 @@
+name: Release
+
+# Builds the ready-made macOS arm64 binary on a GitHub-hosted Apple Silicon runner and attaches it,
+# with a SHA-256 checksum, to a GitHub Release. Trigger: push a tag such as v1.0.0
+#   git tag v1.0.0 && git push origin v1.0.0
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create the release
+
+jobs:
+  macos-arm64:
+    runs-on: macos-latest      # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (arm64)
+        run: |
+          mkdir -p dist
+          clang++ -std=c++17 -O2 -Wall -arch arm64 -o dist/JLCooperPanelDaemon src/JLCooperPanelDaemon.cpp
+          codesign --force --sign - dist/JLCooperPanelDaemon
+          file dist/JLCooperPanelDaemon
+          lipo -archs dist/JLCooperPanelDaemon | grep -qx arm64
+
+      - name: Black-box tests on the exact binary that is released
+        run: |
+          python3 tests/test_daemon.py dist/JLCooperPanelDaemon
+          python3 tests/test_mapping.py dist/JLCooperPanelDaemon
+
+      - name: Package
+        run: |
+          NAME="JLCooperPanelDaemon-${GITHUB_REF_NAME}-macos-arm64"
+          mkdir -p "pkg/$NAME"
+          cp dist/JLCooperPanelDaemon LICENSE "pkg/$NAME/"
+          cp docs/mapping.example.conf "pkg/$NAME/"
+          (cd pkg && zip -qr "../dist/$NAME.zip" "$NAME")
+          (cd dist && shasum -a 256 "$NAME.zip" JLCooperPanelDaemon > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          Unofficial native **arm64** build of `JLCooperPanelDaemon` for DaVinci Resolve and the JLCooper Eclipse panel.
+
+          Built by GitHub Actions from the source of this tag and tested with the repository's black-box tests
+          before publishing. Ad-hoc signed only (not notarised); you re-sign it when you install it.
+          `SHA256SUMS` lists the checksum of the zip and of the bare binary.
+
+          Install steps: see the README, section "Download a ready-made build".
+          Not made, endorsed or supported by Blackmagic Design or JLCooper; replacing a file inside the
+          Resolve app is your decision and your risk.
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/SHA256SUMS \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
