@@ -48,6 +48,9 @@ keylights off       # the stock behaviour (also what you get without the line)
   switched off when the daemon quits.
 * The list of LEDs is the one the original helper clears at start-up (46 LEDs). If a key you expect to light
   stays dark, open an issue with its name.
+* The **keys around the shuttle ring** stay dark on the tested panel: no LED command tried lit them (every `42`
+  and `55 03` id up to 0x7f and every `4B` bit), and they are dark in the manufacturer's product photos too, so
+  they most likely have no LED.
 
 ## Time Code display
 
