@@ -4,7 +4,9 @@ The daemon can read a small text file that
 
 * adds a **SHIFT layer** to the knobs — hold SHIFT and a knob drives a different Resolve control, with
   its own labels on the LCDs while SHIFT is held — and
-* has a **probe mode** for finding the id of a Resolve control that the stock mapping does not use.
+* has a **probe mode** for finding the id of a Resolve control that the stock mapping does not use, and
+* can light the three **trackball lights** (`ballcolors`; the Time Code display has its own file, see
+  [TIMECODE.md](TIMECODE.md)).
 
 Without the file the daemon behaves exactly like the stock helper.
 
@@ -32,6 +34,7 @@ probe      on|off                                   # probe mode, see below
 probestart <pot>                                    # id the probe starts at
 send       <pot> <delta>                            # one-shot command for scripts, see below
 reset      <pot>                                    # one-shot command for scripts, see below
+ballcolors <left> <centre> <right>                  # trackball lights: off | green | blue | red each
 ```
 
 * **mode** is the mode key as numbered in the log (`Received button N`): 0 to 7.
@@ -40,6 +43,7 @@ reset      <pot>                                    # one-shot command for scrip
   `0x..`) or as the raw number used inside the daemon (`0x25b` = panel 2, control 0x5b = `2/91`).
 * A knob without `shiftpot` keeps its normal function while SHIFT is held. SHIFT + the push button of a knob
   that has a SHIFT function resets *that* function.
+* `ballcolors` is described in [TIMECODE.md](TIMECODE.md#trackball-lights); for example `ballcolors red green blue`.
 * `shiftlabel` lines are optional; labels are centred in the knob's 8-character column of the display
   (upper line = name, lower line = qualifier, like "Red" / "Offset").
 

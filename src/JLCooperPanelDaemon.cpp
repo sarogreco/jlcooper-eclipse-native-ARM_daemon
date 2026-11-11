@@ -481,6 +481,9 @@ public:
 //     probestart <pot>
 //     send       <pot> <delta>                      \ one-shot commands, executed each time the file is re-read
 //     reset      <pot>                              / (not at start-up, and only while 'probe on'); for scripts
+//     ballcolors <left> <centre> <right>             off|green|blue|red for each trackball light
+// Timecode display: if a file 'timecode.txt' (one line 'HH:MM:SS:FF' or 'HH:MM:SS;FF') exists next to the mapping
+// file, its content is shown on the panel's 7-segment display instead of the dashes (see docs/TIMECODE.md).
 struct Action { bool reset; unsigned pot; int delta; };
 
 struct Mapping {
@@ -489,6 +492,8 @@ struct Mapping {
     bool probe = false;
     unsigned probeStart = 0x250;
     std::vector<Action> actions;
+    bool balls = false;                    // ballcolors: 0 off, 1 green, 2 blue, 3 red (left, centre, right ball)
+    int ball[3] = {0, 0, 0};
 };
 
 struct FileStamp {
@@ -584,6 +589,18 @@ static bool loadMapping(const std::string& path, Mapping& m) {
             unsigned pot;
             if (sscanf(text.c_str(), "%*s %63s", arg) != 1 || !parsePot(arg, pot)) { elog("%s:%d: expected 'reset <pot>'\n", path.c_str(), ln); continue; }
             if (m.actions.size() < 64) m.actions.push_back(Action{true, pot, 0});
+        } else if (!strcmp(cmd, "ballcolors")) {
+            char c1[16] = {0}, c2[16] = {0}, c3[16] = {0};
+            if (sscanf(text.c_str(), "%*s %15s %15s %15s", c1, c2, c3) != 3) {
+                elog("%s:%d: expected 'ballcolors <left> <centre> <right>' (off, green, blue or red)\n", path.c_str(), ln); continue;
+            }
+            const char* names[3] = {c1, c2, c3}; int col[3]; bool ok = true;
+            for (int i = 0; i < 3; i++) {
+                std::string v = names[i]; for (auto& ch : v) ch = (char)tolower((unsigned char)ch);
+                if (v == "off" || v == "none") col[i] = 0; else if (v == "green") col[i] = 1; else if (v == "blue") col[i] = 2; else if (v == "red") col[i] = 3; else ok = false;
+            }
+            if (!ok) { elog("%s:%d: expected 'ballcolors <left> <centre> <right>' (off, green, blue or red)\n", path.c_str(), ln); continue; }
+            m.balls = true; for (int i = 0; i < 3; i++) m.ball[i] = col[i];
         } else {
             elog("%s:%d: unknown directive '%s'\n", path.c_str(), ln, cmd);
         }
@@ -606,6 +623,10 @@ public:
     Mapping map;                 // user mapping (SHIFT layer, probe settings)
     bool probeActive = false;
     unsigned probeId = 0x250;    // id under test in probe mode
+    bool ballsApplied = false;   // trackball lights were set by the mapping file
+    // timecode display, fed through a small text file (see pollTimecode)
+    bool tcShown = false; unsigned tcV[4] = {0, 0, 0, 0};
+    FileStamp tcStamp;
 
     Controller() { E.ctl = this; R.ctl = this; }
 
@@ -671,6 +692,43 @@ public:
             E.lcdWrite(disp, col, 1, center8(kv.second.second));
         }
     }
+    // trackball lights: two LEDs per ball (ids base and base+1): green = first, blue = second, red = both
+    void setBall(int n, int colour) {
+        static const uint8_t base[3] = {10, 14, 18};
+        E.sendFrame({0x55, 0x03, base[n], (uint8_t)((colour == 1 || colour == 3) ? 0 : 1)});
+        E.sendFrame({0x55, 0x03, (uint8_t)(base[n] + 1), (uint8_t)((colour == 2 || colour == 3) ? 0 : 1)});
+    }
+    void applyBalls() {
+        if (map.balls) { for (int i = 0; i < 3; i++) setBall(i, map.ball[i]); ballsApplied = true; }
+        else if (ballsApplied) { for (int i = 0; i < 3; i++) setBall(i, 0); ballsApplied = false; }
+    }
+    void shutdownLeds() {
+        if (ballsApplied && E.connected()) { for (int i = 0; i < 3; i++) setBall(i, 0); }
+    }
+    // the 7-segment display when probe mode is off: the timecode if one is being fed, else dashes
+    void showIdle() {
+        if (tcShown) E.segNumbers(tcV[0], tcV[1], tcV[2], tcV[3]);
+        else E.segText("--------");
+    }
+    // timecode file: one line "HH:MM:SS:FF" (or "HH:MM:SS;FF" for drop frame), rewritten by a script.
+    // Removing the file restores the dashes. Ignored while probe mode owns the display.
+    void pollTimecode(const std::string& path) {
+        FileStamp st = stampOf(path);
+        if (st == tcStamp) return;
+        tcStamp = st;
+        if (!st.exists) { if (tcShown) { tcShown = false; if (!probeActive) showIdle(); } return; }
+        char buf[64] = {0};
+        FILE* f = fopen(path.c_str(), "r");
+        if (!f) return;
+        size_t n = fread(buf, 1, sizeof buf - 1, f); fclose(f); buf[n] = 0;
+        unsigned v[4];
+        int got = sscanf(buf, "%u%*[:;.]%u%*[:;.]%u%*[:;.]%u", &v[0], &v[1], &v[2], &v[3]);
+        if (got != 4) return;                       // half-written or garbage: keep what is shown
+        for (int i = 0; i < 4; i++) v[i] %= 100;
+        bool changed = !tcShown || memcmp(v, tcV, sizeof v) != 0;
+        memcpy(tcV, v, sizeof v); tcShown = true;
+        if (changed && !probeActive && E.connected() && E.initDone) showIdle();
+    }
     void showProbe() {
         char b[16]; snprintf(b, sizeof b, "%d   %03d ", (int)(probeId >> 8), (int)(probeId & 0xff));
         E.segText(b);
@@ -690,8 +748,9 @@ public:
         if (m.probe && (!probeActive || startChanged)) probeId = m.probeStart;
         bool wasProbe = probeActive;
         probeActive = m.probe;
-        if (probeActive) showProbe(); else if (wasProbe) E.segText("--------");
+        if (probeActive) showProbe(); else if (wasProbe) showIdle();
         drawLabels();
+        if (E.connected() && E.initDone) applyBalls();
         if (runActions && probeActive) for (const Action& a : m.actions) runAction(a);
     }
     void runAction(const Action& a) {
@@ -712,9 +771,10 @@ public:
         E.allLeds(0);
         setMode(0);
         if (const Pair* p = modeTranslate(mode)) E.ledSet((int)p->a, 1);
-        E.segText("--------");
+        showIdle();
         if (probeActive) showProbe();
         E.cmd4A(0);
+        applyBalls();
         E.lcdWrite(2, 0, 0, kInfoLine1);
         E.lcdWrite(2, 0, 1, kInfoLine2);
     }
@@ -1054,6 +1114,8 @@ int main(int argc, char** argv) {
             if (!home.empty()) cfgPath = home + "/Library/Application Support/JLCooperPanelDaemon/mapping.conf";
         }
     }
+    std::string tcPath;
+    { size_t sl = cfgPath.rfind('/'); if (!cfgPath.empty()) tcPath = (sl == std::string::npos ? std::string() : cfgPath.substr(0, sl + 1)) + "timecode.txt"; }
     FileStamp cfgStamp;
     bool cfgSeen = false;
     auto reloadMapping = [&](bool first) {
@@ -1075,7 +1137,7 @@ int main(int argc, char** argv) {
     if (!cfgPath.empty()) reloadMapping(true);
     else ilog("mapping: no home directory found, mapping file disabled (use -c <file> or JLCD_CONFIG)\n");
 
-    int64_t nextConnect = 0, nextTick = nowMs(), nextParent = nowMs() + 1000, nextCfg = nowMs() + 200;
+    int64_t nextConnect = 0, nextTick = nowMs(), nextParent = nowMs() + 1000, nextCfg = nowMs() + 200, nextTc = nowMs() + 200;
     bool wasConnected = false;
     while (!g_quit) {
         int64_t t = nowMs();
@@ -1097,6 +1159,7 @@ int main(int argc, char** argv) {
         if (C.R.fd != -1) { pf.push_back({C.R.fd, POLLIN, 0}); kinds.push_back(K_RESOLVE); }
         if (C.E.fd != -1) { pf.push_back({C.E.fd, POLLIN, 0}); kinds.push_back(K_PANEL); }
         int timeout = 200;
+        if (C.tcShown) timeout = 40;                  // timecode being fed: look at the file about 25 times a second
         if (C.shuttle != 0) timeout = (int)std::max<int64_t>(0, nextTick - t);
         if (!C.E.connected()) timeout = (int)std::min<int64_t>(timeout, std::max<int64_t>(1, nextConnect - t));
         else if (!C.E.initDone) timeout = (int)std::min<int64_t>(timeout, std::max<int64_t>(1, C.E.initAt - t));
@@ -1122,12 +1185,14 @@ int main(int argc, char** argv) {
             if (t >= nextTick) nextTick = t + 5;
         } else nextTick = t + 5;
         if (!cfgPath.empty() && t >= nextCfg) { nextCfg = t + 200; reloadMapping(false); }
+        if (!tcPath.empty() && t >= nextTc) { nextTc = t + (C.tcShown ? 40 : 200); C.pollTimecode(tcPath); }
         if (t >= nextParent) {
             nextParent = t + 1000;
             if (ppid0 != 1 && getppid() != ppid0) { vlog("Parent process died, quitting\n"); break; }
         }
     }
     if (C.R.listenFd != -1) { close(C.R.listenFd); unlink(SOCKET_PATH); }
+    C.shutdownLeds();
     C.E.disconnect();
     vlog("Daemon shuts down!\n");
     return 0;

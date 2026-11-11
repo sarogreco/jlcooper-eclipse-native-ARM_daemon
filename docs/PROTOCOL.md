@@ -54,7 +54,14 @@ Everything else is logged and ignored.
 * `03` — request ID. `02 02 02 00 00` — set mode (sent first, one second after the TCP connect).
 * LED `55 03 <id'> <!on>` for ids 0..13 (mapping 8↔9, 10 → 0x0d, 11 → 0x0c, 12 → 0x11, 13 → 0x10);
   LED `42 <led-0x17> <on>` for ids 0x17..0x53; `4B <b>` for ids 0x15/0x16 (sticky OR); `BF 6B <b>` shuttle LEDs.
-* `4A <hi> <lo>`; 7-segment text `49 <8 segment bytes>`.
+* `4A <hi> <lo>` (no visible effect found); 7-segment display `49 <8 segment bytes>`, the first byte is the
+  *rightmost* digit. Digits 0–9 are `7d 28 37 2f 6a 4f 5f 29 7f 6f`, a dash is `02`. A timecode `HH:MM:SS:FF` is
+  `FF`, `SS`, `MM`, `HH`, each as ones digit then tens digit. The DF mark was not found (bit 7 of any byte,
+  `4A` and every `42`/`55` LED id were tried).
+* Trackball lights: `55 03 <id> <!on>` (the same LED command, but note the inverted flag: `00` = on) with ids
+  10/11 (left ball), 14/15 (centre), 18/19 (right). The lower id of a pair is the green LED, the higher the
+  blue one, both on looks red. These are the bytes as sent in the frame (the `id'` column above, after the
+  stock translation), not logical LED ids.
 * LCD: `55 01 <disp<<6 | col | line<<5> <len ≤ 0x18> <chars>` for displays 0/1, and
   `43 <line<<6 + col> <len> <chars>` for display 2.
 

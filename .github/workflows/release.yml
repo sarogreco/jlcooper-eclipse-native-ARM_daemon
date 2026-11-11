@@ -40,6 +40,8 @@ jobs:
           mkdir -p "pkg/$NAME"
           cp dist/JLCooperPanelDaemon LICENSE "pkg/$NAME/"
           cp docs/mapping.example.conf "pkg/$NAME/"
+          cp -R tools "pkg/$NAME/"
+          cp docs/TIMECODE.md "pkg/$NAME/"
           (cd pkg && zip -qr "../dist/$NAME.zip" "$NAME")
           (cd dist && shasum -a 256 "$NAME.zip" JLCooperPanelDaemon > SHA256SUMS && cat SHA256SUMS)
 

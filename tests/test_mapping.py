@@ -218,6 +218,22 @@ check('bad send/reset lines run nothing and are reported', r == [] and logtext(l
 atomic_cfg("probe off\n")
 time.sleep(0.8); rd(res, 0.2); ecl.take()
 
+# --- helpers for the 7-segment timecode checks further down
+DIG = [0x7d, 0x28, 0x37, 0x2f, 0x6a, 0x4f, 0x5f, 0x29, 0x7f, 0x6f]
+
+
+def frame(*payload):
+    return bytes([0xF0, 0x15, 0x25] + list(payload) + [0xF7])
+
+
+def tc_frame(h, m, s_, f):
+    out = [0x49]
+    for x in (f, s_, m, h):
+        out += [DIG[x % 10], DIG[x // 10]]
+    return frame(*out)
+
+
+
 # --- panel reconnect keeps the mapping and probe state
 write_cfg("shiftpot 2 1 2/200\nshiftlabel 2 1 Color|Temp\nprobe on\nprobestart 2/9\n")
 time.sleep(1.6); ecl.take()
@@ -261,6 +277,73 @@ time.sleep(2.0)
 r = rd(res5, 0.6)
 check('a leftover send line does not run at start-up', r == [], r)
 p5.terminate(); p5.wait(timeout=3); ecl5.stop = True; res5.close()
+
+# --- trackball lights (ballcolors) and the timecode file
+bdir = os.path.join(LOGDIR, 'balls'); os.makedirs(bdir)
+bcfg = os.path.join(bdir, 'mapping.conf'); tcf = os.path.join(bdir, 'timecode.txt')
+
+
+def bwrite(path, text):
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+bwrite(bcfg, 'ballcolors red green blue\n')
+ecl6 = FakeEclipse()
+p6, res6, log6 = start_daemon(EXE, ecl6, 'pair', LOGDIR, extra=('-c', bcfg))
+time.sleep(2.6); fr = ecl6.take()
+check('ballcolors at start-up: left red (10+11), centre green (14), right blue (19)',
+      all(frame(0x55, 0x03, i, v) in fr for i, v in ((0x0a, 0), (0x0b, 0), (0x0e, 0), (0x0f, 1), (0x12, 1), (0x13, 0))), [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+bwrite(bcfg, 'ballcolors blue off red\n')
+time.sleep(1.0); fr = ecl6.take()
+check('ballcolors change on reload: left blue, centre off, right red',
+      all(frame(0x55, 0x03, i, v) in fr for i, v in ((0x0a, 1), (0x0b, 0), (0x0e, 1), (0x0f, 1), (0x12, 0), (0x13, 0))), [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+bwrite(bcfg, 'ballcolors purple red red\n')
+time.sleep(1.0); fr = ecl6.take()
+check('bad ballcolors is reported and the lights are switched off', 'expected' in logtext(log6) and frame(0x55, 0x03, 0x0a, 1) in fr and frame(0x55, 0x03, 0x0b, 1) in fr, logtext(log6)[-300:])
+bwrite(bcfg, 'ballcolors green green green\n')
+time.sleep(1.0); ecl6.take()
+ecl6.drop(); time.sleep(4.5); fr = ecl6.take()
+check('after a panel reconnect the ball lights are set again', frame(0x55, 0x03, 0x0a, 0) in fr and frame(0x55, 0x03, 0x0b, 1) in fr, [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+
+# timecode file
+bwrite(tcf, '01:02:03:04\n')
+time.sleep(0.6); fr = ecl6.take()
+check('timecode file: HH:MM:SS:FF on the display', tc_frame(1, 2, 3, 4) in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '01:02:03:05\n')
+time.sleep(0.5); fr = ecl6.take()
+check('and it follows the file within a fraction of a second', tc_frame(1, 2, 3, 5) in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '01:02:0')
+time.sleep(0.4); fr = ecl6.take()
+check('a half-written line is ignored', not any(f[3:4] == b'\x49' for f in fr), [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '10:00:00;02\n')
+time.sleep(0.8); fr = ecl6.take()
+check('drop frame (;) is accepted and shown as digits', tc_frame(10, 0, 0, 2) in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '10:00:00:03\n')
+time.sleep(0.5); fr = ecl6.take()
+check('and the next non-drop value follows', tc_frame(10, 0, 0, 3) in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+os.unlink(tcf)
+time.sleep(0.6); fr = ecl6.take()
+check('removing the file brings the dashes back', seg_frame('--------') in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '00:00:00:01\n')
+time.sleep(0.6); ecl6.take()
+bwrite(bcfg, 'ballcolors green green green\nprobe on\nprobestart 2/9\n')
+time.sleep(1.0); fr = ecl6.take()
+check('probe mode owns the display while on', seg_frame('2   009 ') in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(tcf, '00:00:00:02\n')
+time.sleep(0.6); fr = ecl6.take()
+check('and the timecode does not overwrite the probe id', not any(f[3:4] == b'\x49' for f in fr), [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(bcfg, 'ballcolors green green green\n')
+time.sleep(1.0); fr = ecl6.take()
+check('probe off: the display shows the timecode again', tc_frame(0, 0, 0, 2) in fr, [f.hex() for f in fr if f[3:4] == b'\x49'])
+bwrite(bcfg, 'ballcolors red red red\n')
+time.sleep(1.0); ecl6.take()
+p6.terminate(); p6.wait(timeout=3)
+time.sleep(0.2); fr = ecl6.take()
+check('on a clean exit the ball lights are switched off', frame(0x55, 0x03, 0x0a, 1) in fr and frame(0x55, 0x03, 0x0b, 1) in fr and frame(0x55, 0x03, 0x12, 1) in fr, [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+ecl6.stop = True; res6.close()
 
 # --- no file at start-up is reported, and the file is picked up when it appears
 ecl4 = FakeEclipse()
