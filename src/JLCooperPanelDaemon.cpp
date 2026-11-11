@@ -482,6 +482,8 @@ public:
 //     send       <pot> <delta>                      \ one-shot commands, executed each time the file is re-read
 //     reset      <pot>                              / (not at start-up, and only while 'probe on'); for scripts
 //     ballcolors <left> <centre> <right>             off|green|blue|red for each trackball light
+//     keylights  off|on|all                          backlight the keys: 'on' = every key LED except the 8 mode keys
+//                                                    (those keep showing the active mode), 'all' = mode keys too
 // Timecode display: if a file 'timecode.txt' (one line 'HH:MM:SS:FF' or 'HH:MM:SS;FF') exists next to the mapping
 // file, its content is shown on the panel's 7-segment display instead of the dashes (see docs/TIMECODE.md).
 struct Action { bool reset; unsigned pot; int delta; };
@@ -494,6 +496,7 @@ struct Mapping {
     std::vector<Action> actions;
     bool balls = false;                    // ballcolors: 0 off, 1 green, 2 blue, 3 red (left, centre, right ball)
     int ball[3] = {0, 0, 0};
+    int keylights = 0;                     // 0 off, 1 on (mode keys keep showing the active mode), 2 all
 };
 
 struct FileStamp {
@@ -601,6 +604,12 @@ static bool loadMapping(const std::string& path, Mapping& m) {
             }
             if (!ok) { elog("%s:%d: expected 'ballcolors <left> <centre> <right>' (off, green, blue or red)\n", path.c_str(), ln); continue; }
             m.balls = true; for (int i = 0; i < 3; i++) m.ball[i] = col[i];
+        } else if (!strcmp(cmd, "keylights")) {
+            char v[16] = {0};
+            if (sscanf(text.c_str(), "%*s %15s", v) != 1) { elog("%s:%d: expected 'keylights off|on|all'\n", path.c_str(), ln); continue; }
+            std::string w = v; for (auto& ch : w) ch = (char)tolower((unsigned char)ch);
+            if (w == "off") m.keylights = 0; else if (w == "on") m.keylights = 1; else if (w == "all") m.keylights = 2;
+            else { elog("%s:%d: expected 'keylights off|on|all'\n", path.c_str(), ln); continue; }
         } else {
             elog("%s:%d: unknown directive '%s'\n", path.c_str(), ln, cmd);
         }
@@ -624,6 +633,7 @@ public:
     bool probeActive = false;
     unsigned probeId = 0x250;    // id under test in probe mode
     bool ballsApplied = false;   // trackball lights were set by the mapping file
+    int keylightsApplied = 0;    // key backlight state last sent to the panel (0 off, 1 on, 2 all)
     // timecode display, fed through a small text file (see pollTimecode)
     bool tcShown = false; unsigned tcV[4] = {0, 0, 0, 0};
     FileStamp tcStamp;
@@ -702,8 +712,18 @@ public:
         if (map.balls) { for (int i = 0; i < 3; i++) setBall(i, map.ball[i]); ballsApplied = true; }
         else if (ballsApplied) { for (int i = 0; i < 3; i++) setBall(i, 0); ballsApplied = false; }
     }
+    // key backlight: every key LED on (ids 0..7 are the mode keys, which keep showing the active mode unless 'all')
+    void applyKeyLights() {
+        int want = map.keylights;
+        if (want == keylightsApplied) return;
+        for (unsigned char id : kLedIds) if (id > 7) E.ledSet(id, want ? 1 : 0);
+        for (auto& e : kModeMap) E.ledSet((int)e.a, (want == 2 || (int)e.b == mode) ? 1 : 0);
+        keylightsApplied = want;
+    }
     void shutdownLeds() {
-        if (ballsApplied && E.connected()) { for (int i = 0; i < 3; i++) setBall(i, 0); }
+        if (!E.connected()) return;
+        if (ballsApplied) { for (int i = 0; i < 3; i++) setBall(i, 0); }
+        if (keylightsApplied) { map.keylights = 0; applyKeyLights(); }
     }
     // the 7-segment display when probe mode is off: the timecode if one is being fed, else dashes
     void showIdle() {
@@ -750,7 +770,7 @@ public:
         probeActive = m.probe;
         if (probeActive) showProbe(); else if (wasProbe) showIdle();
         drawLabels();
-        if (E.connected() && E.initDone) applyBalls();
+        if (E.connected() && E.initDone) { applyBalls(); applyKeyLights(); }
         if (runActions && probeActive) for (const Action& a : m.actions) runAction(a);
     }
     void runAction(const Action& a) {
@@ -775,6 +795,8 @@ public:
         if (probeActive) showProbe();
         E.cmd4A(0);
         applyBalls();
+        keylightsApplied = 0;                            // allLeds(0) above switched everything off
+        applyKeyLights();
         E.lcdWrite(2, 0, 0, kInfoLine1);
         E.lcdWrite(2, 0, 1, kInfoLine2);
     }
@@ -854,7 +876,7 @@ public:
             if ((int)e.a != btn) continue;
             const Pair* cur = modeTranslate(mode);
             if (!cur) return false;
-            E.ledSet((int)cur->a, 0);
+            if (map.keylights != 2) E.ledSet((int)cur->a, 0);
             setMode((int)e.b);
             E.ledSet((int)e.a, 1);
             return true;

@@ -37,7 +37,7 @@ l'helper originale non pilota mai), vedi [docs/TIMECODE.md](docs/TIMECODE.md) (i
 
 **Non verificato su hardware reale:** il simbolo DF (drop frame) del display Time Code (non si è riusciti ad
 accenderlo), gli encoder 7–11, le combinazioni con SHIFT diverse da quelle dei test, altre revisioni
-hardware/firmware dell'Eclipse, altre versioni di Resolve o macOS. Il comportamento è coperto da 148 controlli automatici (pannello e Resolve
+hardware/firmware dell'Eclipse, altre versioni di Resolve o macOS. Il comportamento è coperto da 157 controlli automatici (pannello e Resolve
 simulati) e da prove con sanitizer e fuzzing, ma un simulatore dimostra solo che il codice fa ciò che
 l'autore *crede* faccia l'originale. **I rapporti di prova sono molto graditi**: vedi [Contribuire](#contribuire).
 
@@ -174,7 +174,7 @@ Senza `-s` il demone ascolta su `/var/tmp/davinci_socket` come l'originale. Indi
   SHIFT (per esempio Color Temp, Tint e Highlights, che la mappatura originale non usa) e ha una modalità di
   scansione per trovare gli ID dei controlli di Resolve. Senza il file il comportamento è quello originale.
 * **In più, facoltativo:** le tre luci delle trackball possono essere accese nel colore che vuoi (`ballcolors` nel
-  file di mappatura) e il display Time Code può mostrare il timecode della testina di Resolve, passato tramite un
+  file di mappatura), i tasti possono essere illuminati per la sala buia (`keylights`) e il display Time Code può mostrare il timecode della testina di Resolve, passato tramite un
   piccolo file di testo da uno script che può partire al login. Vedi [docs/TIMECODE.md](docs/TIMECODE.md) (in
   inglese).
 

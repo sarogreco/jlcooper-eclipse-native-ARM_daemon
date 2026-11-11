@@ -345,6 +345,48 @@ time.sleep(0.2); fr = ecl6.take()
 check('on a clean exit the ball lights are switched off', frame(0x55, 0x03, 0x0a, 1) in fr and frame(0x55, 0x03, 0x0b, 1) in fr and frame(0x55, 0x03, 0x12, 1) in fr, [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
 ecl6.stop = True; res6.close()
 
+# --- key backlight (keylights)
+kdir = os.path.join(LOGDIR, 'keys'); os.makedirs(kdir)
+kcfg = os.path.join(kdir, 'mapping.conf')
+OTHER_FRAME_IDS = [0x09, 0x08, 0x0d, 0x0c, 0x11, 0x10]                    # logical LEDs 8..13 as sent on the wire
+EXTRA_42 = [0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x30, 0x31, 0x32, 0x33, 0x34,
+            0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x4f, 0x50, 0x51, 0x52, 0x53]
+
+
+def keys_on(fr):
+    return all(frame(0x55, 0x03, i, 0) in fr for i in OTHER_FRAME_IDS) and all(frame(0x42, i - 0x17, 1) in fr for i in EXTRA_42)
+
+
+bwrite(kcfg, 'keylights on\n')
+ecl7 = FakeEclipse()
+p7, res7, log7 = start_daemon(EXE, ecl7, 'pair', LOGDIR, extra=('-c', kcfg))
+time.sleep(2.6); fr = ecl7.take()
+check('keylights on at start-up: every non-mode key LED is on', keys_on(fr), [f.hex() for f in fr][-12:])
+check('and the mode keys still show only the active mode (0)', frame(0x55, 0x03, 0, 0) in fr and not any(frame(0x55, 0x03, i, 0) in fr for i in range(1, 8)), [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+ecl7.send(0x55, 3, 0); time.sleep(0.5); fr = ecl7.take(); rd(res7, 0.2)
+check('mode switch with keylights on: key 0 goes off, key 3 on', frame(0x55, 0x03, 0, 1) in fr and frame(0x55, 0x03, 3, 0) in fr, [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+bwrite(kcfg, 'keylights all\n')
+time.sleep(1.0); fr = ecl7.take()
+check('keylights all: the mode keys light up too', all(frame(0x55, 0x03, i, 0) in fr for i in range(8)), [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+ecl7.send(0x55, 5, 0); time.sleep(0.5); fr = ecl7.take(); rd(res7, 0.2)
+check('mode switch with keylights all: no mode key is switched off', not any(f[3:5] == b'\x55\x03' and f[6:7] == b'\x01' and f[5] < 8 for f in fr), [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+bwrite(kcfg, 'keylights off\n')
+time.sleep(1.0); fr = ecl7.take()
+check('keylights off: every other key is dark again, only the active mode key (5) stays lit',
+      all(frame(0x55, 0x03, i, 1) in fr for i in OTHER_FRAME_IDS) and all(frame(0x42, i - 0x17, 0) in fr for i in EXTRA_42)
+      and frame(0x55, 0x03, 5, 0) in fr and frame(0x55, 0x03, 4, 1) in fr, [f.hex() for f in fr if f[3:5] == b'\x55\x03'])
+bwrite(kcfg, 'keylights sideways\n')
+time.sleep(1.0); ecl7.take()
+check('bad keylights is reported', 'expected' in logtext(log7) and 'keylights' in logtext(log7), logtext(log7)[-300:])
+bwrite(kcfg, 'keylights on\n')
+time.sleep(1.0); ecl7.take()
+ecl7.drop(); time.sleep(4.5); fr = ecl7.take()
+check('after a panel reconnect the key lights are set again', keys_on(fr), [f.hex() for f in fr][-12:])
+p7.terminate(); p7.wait(timeout=3)
+time.sleep(0.2); fr = ecl7.take()
+check('on a clean exit the key lights are switched off', all(frame(0x55, 0x03, i, 1) in fr for i in OTHER_FRAME_IDS) and all(frame(0x42, i - 0x17, 0) in fr for i in EXTRA_42), [f.hex() for f in fr][-8:])
+ecl7.stop = True; res7.close()
+
 # --- no file at start-up is reported, and the file is picked up when it appears
 ecl4 = FakeEclipse()
 late = os.path.join(LOGDIR, 'late.conf')

@@ -32,12 +32,12 @@ drive Color Temp, Tint and Highlights in Resolve (a fourth, Shadows, was added a
 (Color Wheels, Curves, Color Slice, Color Warper) is open; Resolve ties those ids to the open palette, see the
 [notes](docs/MAPPING.md#these-ids-depend-on-the-palette-that-is-open).
 
-The three trackball lights and the Time Code display (which the stock helper never drives) have been made to
+The three trackball lights and the Time Code display (which the stock helper never drives, nor the key backlight) have been made to
 work on that panel too, see [docs/TIMECODE.md](docs/TIMECODE.md).
 
 **Not verified on real hardware:** the drop-frame mark of the Time Code display (could not be lit), encoders 7–11,
 shifted key combinations other than the ones in the tests, other Eclipse hardware/firmware revisions, other
-Resolve or macOS versions. The behaviour is covered by 148 automated black-box checks (fake panel + fake Resolve) and
+Resolve or macOS versions. The behaviour is covered by 157 automated black-box checks (fake panel + fake Resolve) and
 sanitizer/fuzz runs, but a simulator only proves that the code does what its author *thinks* the original
 does. **Test reports are very welcome** — see [Contributing](#contributing).
 
@@ -173,7 +173,7 @@ Without `-s` the daemon listens on `/var/tmp/davinci_socket` like the original. 
   Tint and Highlights, which the stock mapping does not use) and has a probe mode for finding Resolve control ids.
   Without the file the behaviour is the stock one.
 * **Extra, optional:** the three trackball lights can be lit in a colour of your choice (`ballcolors` in the
-  mapping file), and the Time Code display can show Resolve's playhead timecode, fed through a small text file by
+  mapping file), the keys can be backlit for a dark room (`keylights`), and the Time Code display can show Resolve's playhead timecode, fed through a small text file by
   a helper script that can run at login. See [docs/TIMECODE.md](docs/TIMECODE.md).
 
 ## How it works

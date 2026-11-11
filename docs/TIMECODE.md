@@ -1,9 +1,10 @@
-# Trackball lights and Time Code display (optional)
+# Trackball lights, key lights and Time Code display (optional)
 
-Two things the stock helper never does on the Eclipse, both optional and off until you set them up:
+Things the stock helper never does on the Eclipse, all optional and off until you set them up:
 
 1. the **three trackball lights** (Lift, Gamma, Gain) — a line in the [mapping file](MAPPING.md);
-2. the **Time Code display** (the 7-segment display) showing the playhead timecode of Resolve — a small
+2. the **key lights**, to find the keys in a dark room — another line in the mapping file;
+3. the **Time Code display** (the 7-segment display) showing the playhead timecode of Resolve — a small
    helper script plus a text file.
 
 Verified on one setup (Eclipse, Resolve Studio 21.2, macOS, Apple Silicon). Reports from other setups are welcome.
@@ -29,6 +30,24 @@ ballcolors red green blue
 
 Ids, for the curious: left ball `55 03 <id'> <!on>` with ids 10 (green) and 11 (blue), centre 14 and 15, right
 18 and 19 — see [PROTOCOL.md](PROTOCOL.md).
+
+## Key lights
+
+The stock helper lights only the key of the active mode; Resolve never drives the other key LEDs. In a dark
+grading room that makes the keys hard to find. One line in `mapping.conf` lights them:
+
+```
+keylights on        # every key LED on, except the 8 mode keys, which keep showing the active mode
+keylights all       # the mode keys too (then the active mode is no longer visible on them, only on the LCDs)
+keylights off       # the stock behaviour (also what you get without the line)
+```
+
+* The LEDs are on or off: no brightness control was found on the panel.
+* The shuttle direction LEDs keep their normal job and are not touched.
+* The lights are set when the panel connects, when the file is saved, and after a panel reconnect; they are
+  switched off when the daemon quits.
+* The list of LEDs is the one the original helper clears at start-up (46 LEDs). If a key you expect to light
+  stays dark, open an issue with its name.
 
 ## Time Code display
 
