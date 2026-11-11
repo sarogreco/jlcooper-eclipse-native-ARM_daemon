@@ -117,7 +117,7 @@ real panel; "inferred" = identified from how the picture changes, not yet confir
 | `2/26`, `2/27` | not named | `2/26` warms the mid tones, `2/27` is a very small contrast-like change. They sit next to Highlights/Shadows and may be Color Boost and Mid/Detail; unconfirmed. |
 | `2/32`, `2/48`, `2/64` | Gain, Gamma, Lift (rings) | as in the table above. |
 | `2/33`, `2/49`, `2/65` | Saturation, Hue, Lum Mix | as in the table above. |
-| `2/4`–`2/7`, `2/16`–`2/21`, `2/128`–`2/133` | Custom Curves | leave a "Custom Curves" entry in the node. |
+| `2/4`–`2/7`, `2/16`–`2/21`, `2/128`–`2/133` | Custom Curves | leave a "Custom Curves" entry in the node. With a Hue curve open, `2/0`–`2/11` and `2/16`–`2/21` are its colour points instead, see [Hue curves](#hue-curves-the-six-colour-points-of-hue-vs-hue-hue-vs-sat-and-hue-vs-lum). |
 | `2/208`–`2/246`, and the same range on panels 0 and 1 | RGB Mixer, Blur/Sharpen/Mist, Noise Reduction, Motion Blur, Sizing | see the warning below. |
 
 Nothing else between `2/11` and `2/205` did anything visible, on any of the three panels.
@@ -152,6 +152,37 @@ Skip 206–255 when scanning, and keep a throwaway timeline: if the picture ends
 from the same clip. Scanning with the Window or Qualifier palette open also changes window and qualifier settings
 and may reset parts of the grade (Offset, Saturation, Contrast, the qualifier), so do it on a timeline you do not
 care about, and do not use `reset` on ids you do not know.
+
+## Hue curves: the six colour points of Hue vs Hue, Hue vs Sat and Hue vs Lum
+
+With one of the Hue curves open in the Curves palette, a few of the ids above stop meaning "Offset" or "Custom
+Curves" and move the six fixed colour points of the open curve instead. Found on the maintainer's setup (Eclipse,
+DaVinci Resolve Studio 21.2); the ids are addressed absolutely, so SHIFT + knob gives the panel direct control of
+a point that otherwise needs the mouse:
+
+| colour (Input Hue) | Hue vs Hue | Hue vs Sat | Hue vs Lum |
+|---|---|---|---|
+| Red (256) | `2/0` | `2/16` | `2/6` |
+| Yellow (316) | `2/1` | `2/17` | `2/7` |
+| Green (16) | `2/2` | `2/18` | `2/8` |
+| Cyan (76) | `2/3` | `2/19` | `2/9` |
+| Blue (136) | `2/4` | `2/20` | `2/10` |
+| Magenta (196) | `2/5` | `2/21` | `2/11` |
+
+What to expect:
+
+* **Turning one of these also selects the curve type.** Sending an id from the Hue vs Sat column while Hue vs Hue
+  is open switches Resolve to Hue vs Sat (and the same for Hue vs Lum), so the three columns do not need
+  the matching curve to be open first — any Hue-family curve will do.
+* **They do nothing from Custom.** With Curves – Custom open these ids have no effect (there they are the
+  Custom Curves ids listed above). The Curves palette remembers the sub-mode it was last in, and **no panel key
+  selects a sub-mode**: about 600 key ids were tried, none switches between Custom and the Hue curves. Open the
+  curve you want with the mouse once; after that the panel can drive it.
+* Other palettes (Color Slice, Color Warper, …) were not tested for these ids.
+* They overlap with ids used for other things (for example `2/8` is Color Temp in the palette table above and Hue
+  vs Lum Green here). Which one you get depends on the palette that is open, so the SHIFT layers in the examples at
+  the end are separate pages: Page 3 keeps Temp, Tint, Highlights and Shadows (they work under Custom Curves), and
+  the Hue curves get pages of their own.
 
 ## Finding the id of a control (probe mode)
 
@@ -221,5 +252,31 @@ shiftlabel 2 4 Shadows|
 With the Offset page (mode key 2) active, SHIFT + knob 1/2/3/4 then drives Temp/Tint/Highlights/Shadows instead of
 Red/Green/Blue/Master Offset, and the display shows the new labels while SHIFT is held. This only works while a
 colour palette is open (see the table above); with Qualifier or Sizing open the same knobs do something else.
+
+## Example: the six Hue-curve colours on SHIFT + knobs 1–6 of pages 4, 5 and 6
+
+Also in [mapping.example.conf](mapping.example.conf). Hold SHIFT and turn knobs 1–6 of mode key 3 (Hue vs Hue),
+4 (Hue vs Sat) or 5 (Hue vs Lum) to move Red, Yellow, Green, Cyan, Blue and Magenta; without SHIFT the stock
+functions stay. Mode keys are numbered from 0, so page *N* of the panel is mode `N-1` in the file. The three pages
+are written the same way; this is Hue vs Hue (ids `2/0`…`2/5`), the others use `2/16`…`2/21` and `2/6`…`2/11`:
+
+```
+shiftpot   3 1 2/0
+shiftpot   3 2 2/1
+shiftpot   3 3 2/2
+shiftpot   3 4 2/3
+shiftpot   3 5 2/4
+shiftpot   3 6 2/5
+shiftlabel 3 1 Red|HvH
+shiftlabel 3 2 Yellow|HvH
+shiftlabel 3 3 Green|HvH
+shiftlabel 3 4 Cyan|HvH
+shiftlabel 3 5 Blue|HvH
+shiftlabel 3 6 Magenta|HvH
+```
+
+It only works while a Hue-family curve is open in the Curves palette — see
+[the Hue curves section](#hue-curves-the-six-colour-points-of-hue-vs-hue-hue-vs-sat-and-hue-vs-lum) for the limits.
+The Page 3 example above is unaffected, so Temp, Tint, Highlights and Shadows stay where they were.
 
 A complete annotated sample is in [mapping.example.conf](mapping.example.conf).
