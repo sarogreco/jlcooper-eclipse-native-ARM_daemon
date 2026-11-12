@@ -28,9 +28,9 @@ Tested by the maintainer on one setup:
 With Resolve running the replacement (no Rosetta) everything the maintainer tried worked: trackballs and
 rings, knobs, jog and shuttle, buttons, and the mode keys with their LEDs and LCD labels. The optional
 [mapping file](docs/MAPPING.md) has also been used on that panel: with it, SHIFT + knobs 1–3 of the Offset page
-drive Color Temp, Tint and Highlights in Resolve (a fourth, Shadows, was added afterwards) while a colour palette
-(Color Wheels, Curves, Color Slice, Color Warper) is open; Resolve ties those ids to the open palette, see the
-[notes](docs/MAPPING.md#these-ids-depend-on-the-palette-that-is-open).
+drive Color Temp, Tint and Highlights in Resolve (Shadows and, on knob 5, Color Boost were added afterwards) while Custom Curves
+is open (whichever palette is selected on the left of the Color page; otherwise they give anomalies), see the
+[notes](docs/MAPPING.md#these-ids-need-custom-curves-to-be-open).
 
 The three trackball lights and the Time Code display (which the stock helper never drives, nor the key backlight) have been made to
 work on that panel too, see [docs/TIMECODE.md](docs/TIMECODE.md).

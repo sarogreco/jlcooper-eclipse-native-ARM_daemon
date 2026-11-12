@@ -28,9 +28,9 @@ Provato dal manutentore su una sola configurazione:
 Con Resolve che usa il sostituto (senza Rosetta) tutto ciò che è stato provato funziona: trackball e anelli,
 manopole, jog e shuttle, tasti, tasti di modalità con LED ed etichette LCD. Su quel pannello è stato usato anche
 il [file di mappatura](docs/MAPPING.md) facoltativo: con SHIFT, le manopole 1–3 della pagina Offset comandano
-Color Temp, Tint e Highlights in Resolve (poi è stata aggiunta una quarta, Shadows) mentre è aperta una palette
-colore (Color Wheels, Curves, Color Slice, Color Warper): Resolve lega quegli ID alla palette aperta, vedi le
-[note](docs/MAPPING.md#these-ids-depend-on-the-palette-that-is-open) (in inglese).
+Color Temp, Tint e Highlights in Resolve (poi sono stati aggiunti Shadows e, sulla manopola 5, Color Boost) mentre
+è aperto Custom Curves (qualunque palette sia selezionata a sinistra nella pagina Color; altrimenti si hanno
+anomalie), vedi le [note](docs/MAPPING.md#these-ids-need-custom-curves-to-be-open) (in inglese).
 
 Su quel pannello sono state fatte funzionare anche le tre luci delle trackball e il display Time Code (che
 l'helper originale non pilota mai), vedi [docs/TIMECODE.md](docs/TIMECODE.md) (in inglese).

@@ -120,7 +120,7 @@ real panel; "inferred" = identified from how the picture changes, not yet confir
 | `2/25` | **Shadows** | effect strongest on dark tones, fading towards the bright ones. Inferred. |
 | `2/10` | Contrast | identical to `2/81`. |
 | `2/0`…`2/3` | Offset: master, R, G, B | identical to `2/90`…`2/93`. |
-| `2/26` | **Color Boost** | Confirmed from the real panel: with Color Wheels open the Color Boost field moves. Not checked with other palettes. |
+| `2/26` | **Color Boost** | Confirmed from the real panel: the Color Boost field moves. Like Temp, Tint, Highlights and Shadows it needs Custom Curves to be open, see below. |
 | `2/27` | not named | a very small contrast-like change; sits next to Highlights/Shadows/Color Boost and may be Mid/Detail; unconfirmed. |
 | `2/32`, `2/48`, `2/64` | Gain, Gamma, Lift (rings) | as in the table above. |
 | `2/33`, `2/49`, `2/65` | Saturation, Hue, Lum Mix | as in the table above. |
@@ -129,13 +129,18 @@ real panel; "inferred" = identified from how the picture changes, not yet confir
 
 Nothing else between `2/11` and `2/205` did anything visible, on any of the three panels.
 
-### These ids depend on the palette that is open
+### These ids need Custom Curves to be open
 
 Only the ids for the stock functions (Lift, Gamma, Gain, Saturation, Hue, Lum Mix, Contrast, Offset) work the
-same whatever is open in Resolve. The others, `2/8`, `2/9`, `2/24`, `2/25` and `2/26`, are tied to the open palette on
-the Color page. Observed on the maintainer's setup:
+same whatever is open in Resolve. The others, `2/8`, `2/9`, `2/24`, `2/25` and `2/26` (Color Temp, Tint,
+Highlights, Shadows, Color Boost), work as described only **while Custom Curves is open**. Using them on the real
+panel the maintainer found that this is what counts, **whichever palette is selected on the left of the Color
+page**; without Custom Curves open they give anomalies.
 
-| open palette | Temp, Tint, Highlights, Shadows ids (Color Boost, `2/26`: only checked with Color Wheels) |
+The first scan had described the same dependence as "depends on the open palette". What it saw, kept here as a
+list of what can go wrong (not as a list of supported palettes):
+
+| open palette | what the ids did in the scan |
 |---|---|
 | Primaries – Color Wheels, Curves, Color Slice, Color Warper | work as described above |
 | Qualifier | move a Qualifier luminance parameter instead |
@@ -143,8 +148,8 @@ the Color page. Observed on the maintainer's setup:
 | Window, Tracker, Magic Mask, Blur, Key | do nothing |
 
 With Window open a second scan found **no** id for these four functions on any panel (0, 1 or 2, controls 0–205), so
-they cannot be had there with this panel. The daemon is not told which palette is open, so it cannot block the
-ids in the wrong palettes either: do not turn these knobs while Qualifier or Sizing is open. Forcing a colour
+they cannot be had there with this panel. The daemon is not told what is open in Resolve, so it cannot block
+the ids when Custom Curves is not open: do not turn these knobs then, and never while Qualifier or Sizing is open. Forcing a colour
 palette from the daemon would move you out of Window (and hide the window outline), so it was not done.
 
 A scan like this can also not see anything that needs a window or a qualifier to be switched on first.
@@ -188,7 +193,7 @@ What to expect:
 * Other palettes (Color Slice, Color Warper, …) were not tested for these ids.
 * They overlap with ids used for other things (for example `2/8` is Color Temp in the palette table above and Hue
   vs Lum Green here). Which one you get depends on the palette that is open, so the SHIFT layers in the examples at
-  the end are separate pages: Page 3 keeps Temp, Tint, Highlights, Shadows and Color Boost (the first four work under Custom Curves; Color Boost was not checked there), and
+  the end are separate pages: Page 3 keeps Temp, Tint, Highlights, Shadows and Color Boost (all five need Custom Curves open), and
   the Hue curves get pages of their own.
 
 ## Finding the id of a control (probe mode)
@@ -260,7 +265,9 @@ shiftlabel 2 5 Color|Boost
 
 With the Offset page (mode key 2) active, SHIFT + knob 1/2/3/4/5 then drives Temp/Tint/Highlights/Shadows/Color Boost
 instead of Red/Green/Blue/Master Offset and Contrast, and the display shows the new labels while SHIFT is held. This only works while a
-colour palette is open (see the table above); with Qualifier or Sizing open the same knobs do something else.
+Custom Curves is open (see [the section above](#these-ids-need-custom-curves-to-be-open)), whichever palette is
+selected on the left; otherwise the same knobs give anomalies (with Qualifier or Sizing open they move other
+parameters).
 
 ## Example: the six Hue-curve colours on SHIFT + knobs 1–6 of pages 4, 5 and 6
 
