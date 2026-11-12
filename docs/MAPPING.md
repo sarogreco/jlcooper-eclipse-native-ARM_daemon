@@ -120,7 +120,8 @@ real panel; "inferred" = identified from how the picture changes, not yet confir
 | `2/25` | **Shadows** | effect strongest on dark tones, fading towards the bright ones. Inferred. |
 | `2/10` | Contrast | identical to `2/81`. |
 | `2/0`…`2/3` | Offset: master, R, G, B | identical to `2/90`…`2/93`. |
-| `2/26`, `2/27` | not named | `2/26` warms the mid tones, `2/27` is a very small contrast-like change. They sit next to Highlights/Shadows and may be Color Boost and Mid/Detail; unconfirmed. |
+| `2/26` | **Color Boost** | Confirmed from the real panel: with Color Wheels open the Color Boost field moves. Not checked with other palettes. |
+| `2/27` | not named | a very small contrast-like change; sits next to Highlights/Shadows/Color Boost and may be Mid/Detail; unconfirmed. |
 | `2/32`, `2/48`, `2/64` | Gain, Gamma, Lift (rings) | as in the table above. |
 | `2/33`, `2/49`, `2/65` | Saturation, Hue, Lum Mix | as in the table above. |
 | `2/4`–`2/7`, `2/16`–`2/21`, `2/128`–`2/133` | Custom Curves | leave a "Custom Curves" entry in the node. With a Hue curve open, `2/0`–`2/11` and `2/16`–`2/21` are its colour points instead, see [Hue curves](#hue-curves-the-six-colour-points-of-hue-vs-hue-hue-vs-sat-and-hue-vs-lum). |
@@ -131,10 +132,10 @@ Nothing else between `2/11` and `2/205` did anything visible, on any of the thre
 ### These ids depend on the palette that is open
 
 Only the ids for the stock functions (Lift, Gamma, Gain, Saturation, Hue, Lum Mix, Contrast, Offset) work the
-same whatever is open in Resolve. The others, `2/8`, `2/9`, `2/24` and `2/25`, are tied to the open palette on
+same whatever is open in Resolve. The others, `2/8`, `2/9`, `2/24`, `2/25` and `2/26`, are tied to the open palette on
 the Color page. Observed on the maintainer's setup:
 
-| open palette | Temp, Tint, Highlights, Shadows ids |
+| open palette | Temp, Tint, Highlights, Shadows ids (Color Boost, `2/26`: only checked with Color Wheels) |
 |---|---|
 | Primaries – Color Wheels, Curves, Color Slice, Color Warper | work as described above |
 | Qualifier | move a Qualifier luminance parameter instead |
@@ -187,7 +188,7 @@ What to expect:
 * Other palettes (Color Slice, Color Warper, …) were not tested for these ids.
 * They overlap with ids used for other things (for example `2/8` is Color Temp in the palette table above and Hue
   vs Lum Green here). Which one you get depends on the palette that is open, so the SHIFT layers in the examples at
-  the end are separate pages: Page 3 keeps Temp, Tint, Highlights and Shadows (they work under Custom Curves), and
+  the end are separate pages: Page 3 keeps Temp, Tint, Highlights, Shadows and Color Boost (the first four work under Custom Curves; Color Boost was not checked there), and
   the Hue curves get pages of their own.
 
 ## Finding the id of a control (probe mode)
@@ -240,7 +241,7 @@ colour per brightness band before and after a larger turn (delta 300): Temp is a
 versus red+blue see-saw, Highlights a change that grows with brightness. Several ids can be sent in one file to
 search quickly, then split the groups that react.
 
-## Example: Color Temp, Tint, Highlights and Shadows on SHIFT + the Offset-page knobs
+## Example: Color Temp, Tint, Highlights, Shadows and Color Boost on SHIFT + the Offset-page knobs
 
 This is the maintainer's setup (also in [mapping.example.conf](mapping.example.conf)):
 
@@ -249,14 +250,16 @@ shiftpot   2 1 2/8
 shiftpot   2 2 2/9
 shiftpot   2 3 2/24
 shiftpot   2 4 2/25
+shiftpot   2 5 2/26
 shiftlabel 2 1 Color|Temp
 shiftlabel 2 2 Color|Tint
 shiftlabel 2 3 Hilights|
 shiftlabel 2 4 Shadows|
+shiftlabel 2 5 Color|Boost
 ```
 
-With the Offset page (mode key 2) active, SHIFT + knob 1/2/3/4 then drives Temp/Tint/Highlights/Shadows instead of
-Red/Green/Blue/Master Offset, and the display shows the new labels while SHIFT is held. This only works while a
+With the Offset page (mode key 2) active, SHIFT + knob 1/2/3/4/5 then drives Temp/Tint/Highlights/Shadows/Color Boost
+instead of Red/Green/Blue/Master Offset and Contrast, and the display shows the new labels while SHIFT is held. This only works while a
 colour palette is open (see the table above); with Qualifier or Sizing open the same knobs do something else.
 
 ## Example: the six Hue-curve colours on SHIFT + knobs 1–6 of pages 4, 5 and 6
@@ -283,6 +286,6 @@ shiftlabel 3 6 Magenta|HvH
 
 It only works while a Hue-family curve is open in the Curves palette — see
 [the Hue curves section](#hue-curves-the-six-colour-points-of-hue-vs-hue-hue-vs-sat-and-hue-vs-lum) for the limits.
-The Page 3 example above is unaffected, so Temp, Tint, Highlights and Shadows stay where they were.
+The Page 3 example above is unaffected, so Temp, Tint, Highlights, Shadows and Color Boost stay where they were.
 
 A complete annotated sample is in [mapping.example.conf](mapping.example.conf).
